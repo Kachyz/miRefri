@@ -4,7 +4,43 @@ var app = require('../../server/server')
 module.exports = function(Receta) {
 
     Receta.compara = function(ingredientes,cb){
-        console.log(ingredientes[0].name);
+        console.log(ingredientes);
+        let allRecipies = {}
+        for(let currentIngrediente of ingredientes){
+console.log('revisando', currentIngrediente)
+          app.models.ingrediente.findOne({where: {nombre: currentIngrediente}}, (err, model) => {
+            for(let idRecipe of model.recetas){
+console.log('all-',allRecipies)
+              if(idRecipe in allRecipies){
+                console.log('check in idRecipe',allRecipies[idRecipe])
+                allRecipies[idRecipe].tengo.push(currentIngrediente)
+                console.log(currentIngrediente, 'agregado a receta', allRecipies[idRecipe].nombreReceta)
+              } else {
+                console.log('inicio else', idRecipe)
+                //find al id para sacar el nombre de la receta y que se necesita de ingredientes
+                app.models.receta.findOne({where: {id: idRecipe}}, (err, receta) => {
+                  console.log('Agregando receta', receta.nombre)
+
+                  let ingredientesReceta = receta.ingredientes.map( ing => ing.name )
+
+                  allRecipies[idRecipe] = {
+                    'nombreReceta': receta.nombre, 
+                    'tengo': [],
+                    'necesito': ingredientesReceta, 
+                    'porcentaje': "0%"
+                  }
+                  allRecipies[idRecipe].tengo.push(currentIngrediente)
+                  console.log('toditas',allRecipies)
+                })
+              }
+            }
+          })
+// KACHYZ, necesito volver la seccion de arriba sincrona para evitar que se sobreescriba informacion y tener todos los datos bien          
+        }
+        console.log("todos las recetas (de momento)\n", allRecipies)
+
+        // despues de que todo esta creado hacer un recorrido de todas las recetas y calcular el porcentaje de match
+        // regresar ese JSON
         cb(null,ingredientes);
     }
 
@@ -19,7 +55,7 @@ module.exports = function(Receta) {
                 required:true
             },
             returns:{
-                arg:'resp',
+                arg:'recetas',
                 type:{}
             },
         }
@@ -28,12 +64,7 @@ module.exports = function(Receta) {
     Receta.observe('after save', function(ctx, next){
       console.log(ctx.instance)
       let newRecipe = ctx.instance
-      // ctx.intance.ingredientes //array
-      //Account.find({where: {name: 'John'}, limit: 3}, function(err, accounts) { /* ... */ });
 
-      // app.models.Receta.find({where: {id: '5b88a065f1ed047281533ecc'}}, function(err, receta){
-      //   console.log('Desde el observe', receta)
-      // })
       for(let ingrediente of newRecipe.ingredientes){
         app.models.ingrediente.findOrCreate(
           {where: {nombre: ingrediente.name}}, 
@@ -46,8 +77,7 @@ module.exports = function(Receta) {
               instance.recetas.push(newRecipe.id)
               instance.save((err, instance) => {
                 console.log('Ingrediente actualizado', instance)
-              }
-              )
+              })
             }
           }
         )
