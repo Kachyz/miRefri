@@ -38,5 +38,9 @@
   "receta": {
     "dataSource": "db",
     "public": true
+  },
+  "ingrediente": {
+    "dataSource": "db",
+    "public": true
   }
 }
